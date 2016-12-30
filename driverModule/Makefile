@@ -13,13 +13,13 @@ DEPSH = $(patsubst %,$(IDIR)/%.h,$(DEPS))
 DEPSH += $(MAIN).h
 
 DEPSC = $(patsubst %,$(LDIR)/%.c,$(DEPS))
-DEPSC += $(MAIN).c
+DEPSC += $(MAIN).cpp
 
 OBJ = $(patsubst %,%.o,$(DEPS))
 OBJ += $(MAIN).o
 
 
-$(OBJ).o: $(DEPSC).c $(DEPSH).h
+$(OBJ).o: $(DEPSC).cpp $(DEPSH).h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 hellomake: $(OBJ)
