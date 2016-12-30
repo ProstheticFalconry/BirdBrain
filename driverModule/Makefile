@@ -19,7 +19,7 @@ OBJ = $(patsubst %,%.o,$(DEPS))
 OBJ += $(MAIN).o
 
 
-%.o: %.c $(DEPSC) %.h $(DEPSH)
+$(OBJ).o: %.c $(DEPSC) %.h $(DEPSH)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 hellomake: $(OBJ)
@@ -28,4 +28,4 @@ hellomake: $(OBJ)
 .PHONY: clean
 
 clean:
-	rm -f *.o *~ core $(INCDIR)/*~ 
+	rm -f *.o *~ core $(INCDIR)/*~
