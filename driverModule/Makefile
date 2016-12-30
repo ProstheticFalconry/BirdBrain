@@ -19,7 +19,7 @@ OBJ = $(patsubst %,%.o,$(DEPS))
 OBJ += $(MAIN).o
 
 
-$(OBJ).o: %.c $(DEPSC) %.h $(DEPSH)
+$(OBJ).o: $(DEPSC).c $(DEPSH).h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 hellomake: $(OBJ)
