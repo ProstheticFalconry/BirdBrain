@@ -23,10 +23,6 @@ OBJ += $(patsubst %,%.o,$(_SRCS))
 %.o: $(SRCDIR)/%.cpp $(SRCS)
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-hellomake: $(OBJ)
+driverMain: $(OBJ)
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
-
-.PHONY: clean
-
-clean:
 	rm -f *.o *~ core $(INCDIR)/*~
