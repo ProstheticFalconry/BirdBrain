@@ -3,12 +3,12 @@
 class Test {
 	public:
 		Test();
-		printTest();
+		void printTest();
 		int intTest;
 	private:
 		int intTest2;
 		char testStr[30];
-}
+};
 
 
 #endif

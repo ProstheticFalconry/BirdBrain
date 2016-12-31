@@ -1,13 +1,15 @@
 #include <stdio.h>
 #include <testdep.h>
+#include <string.h>
 
 Test::Test(){
-	this->testStr="hello world";
+        char teststr[]="hello world";
+	strcpy(this->testStr,teststr);
 	this->intTest=1;
 	this->intTest2=2;
 }
 
 void Test::printTest(){
-	printf("%s \n");
+	printf("%s \n",testStr);
 }
 

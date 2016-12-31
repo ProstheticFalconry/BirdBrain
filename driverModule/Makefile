@@ -1,29 +1,30 @@
-IDIR =../include
-CC=g++
-CFLAGS=-I$(IDIR)
+CXXFLAGS=-I$(IDIR)
 
-LDIR =../lib
+LDIR=lib
+SRCDIR=src
+IDIR=include
+
 
 LIBS=-lm
 
-MAIN=driverMain
-DEPS = testdep
+_SRCS=driverMain
+SRCS=$(patsubst %,$(IDIR)/%.h,$(_SRCS))
 
-DEPSH = $(patsubst %,$(IDIR)/%.h,$(DEPS))
-DEPSH += $(MAIN).h
+_LLIBS = testdep
+LLIBS=$(patsubst %,$(IDIR)/%.h,$(_LLIBS))
 
-DEPSC = $(patsubst %,$(LDIR)/%.c,$(DEPS))
-DEPSC += $(MAIN).cpp
-
-OBJ = $(patsubst %,%.o,$(DEPS))
-OBJ += $(MAIN).o
+OBJ = $(patsubst %,%.o,$(_LLIBS))
+OBJ += $(patsubst %,%.o,$(_SRCS))
 
 
-$(OBJ).o: $(DEPSC).cpp $(DEPSH).h
-	$(CC) -c -o $@ $< $(CFLAGS)
+%.o: $(LDIR)/%.cpp $(LLIBS) 
+	$(CXX) -c $(CXXFLAGS) $< -o $@
+
+%.o: $(SRCDIR)/%.cpp $(SRCS)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
 
 hellomake: $(OBJ)
-	g++ -o $@ $^ $(CFLAGS) $(LIBS)
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
 
 .PHONY: clean
 
