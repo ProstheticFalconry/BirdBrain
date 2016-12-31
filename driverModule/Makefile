@@ -1,9 +1,10 @@
-CXXFLAGS=-I$(IDIR)
+
 
 LDIR=lib
 SRCDIR=src
 IDIR=include
 
+CCFLAGS=-I$(IDIR)
 
 LIBS=-lm
 
@@ -17,12 +18,17 @@ OBJ = $(patsubst %,%.o,$(_LLIBS))
 OBJ += $(patsubst %,%.o,$(_SRCS))
 
 
-%.o: $(LDIR)/%.cpp $(LLIBS) 
-	$(CXX) -c $(CXXFLAGS) $< -o $@
+%.o: $(LDIR)/%.c $(LLIBS) 
+	$(CC) -c $(CCFLAGS) $< -o $@
 
-%.o: $(SRCDIR)/%.cpp $(SRCS)
-	$(CXX) -c $(CXXFLAGS) $< -o $@
+%.o: $(SRCDIR)/%.c $(SRCS)
+	$(CC) -c $(CCFLAGS) $< -o $@
 
 driverMain: $(OBJ)
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
-	rm -f *.o *~ core $(INCDIR)/*~
+	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS)
+	rm -f *.o *~ core $(INCDIR)/*
+
+testBin: $(OBJ)
+	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS)
+	mv testBin test
+	rm -f *.o *~ core $(INCDIR)/*
