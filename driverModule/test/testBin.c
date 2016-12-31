@@ -2,6 +2,6 @@
 #include "testBin.h"
 
 int main(int argc,char *argv[]){
-	printf("Yes hello\n");
+	printf("Yes hello 1\n");
 }
 
