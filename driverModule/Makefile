@@ -2,14 +2,14 @@ LDIR = lib
 SRCDIR = src
 IDIR = include
 
-CCFLAGS = -I$(IDIR)
+CCFLAGS = -I$(IDIR) -I/usr/include/libxml2
 
-LIBS = -lm
+LIBS = -lm -lxml2
 
 _SRCS = driverMain
 SRCS = $(patsubst %,$(IDIR)/%.h,$(_SRCS))
 
-_LLIBS = xmlBuffer
+_LLIBS = xmlMsgBuffer
 LLIBS = $(patsubst %,$(IDIR)/%.h,$(_LLIBS))
 
 OBJ = $(patsubst %,%.o,$(_LLIBS))
@@ -27,9 +27,9 @@ testBin.o: test/testBin.c test/testBin.h
 
 driverMain: $(MOBJ)
 	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS)
-	rm -f *.o *~ core $(IDIR)/*
+	rm -f *.o
 
 testBin: $(TOBJ)
 	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS)
 	mv testBin test
-	rm -f *.o *~ core $(IDIR)/*
+	rm -f *.o
