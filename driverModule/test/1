@@ -1,0 +1,35 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ringBuf.h>
+#include "testBin.h"
+
+int main(int argc,char *argv[]){
+	RingBuf *testBuffer=bufInit(300);
+        char *extBuf=(char *)malloc(300);
+        char string1[]="Hello world 1\n";
+        char string2[]="Hello world 2\n";
+        char string3[]="Hello world 3\n";
+
+        printf("Putting in first string\n");
+        bufPush(testBuffer,string1);
+
+        printf("Putting in the second string\n");
+        bufPush(testBuffer,string2);
+
+        printf("Putting in the third string\n");
+        bufPush(testBuffer,string3);
+        printf("Head %d\n",testBuffer->head);
+        printf("Tail %d\n",testBuffer->tail);
+        printf("BufUse %d\n",testBuffer->bufUse);
+        printf("Capacity %d\n",testBuffer->capacity);
+
+        bufPull(testBuffer,extBuf,300);
+        printf("First string %s\n",extBuf);
+
+        bufPull(testBuffer,extBuf,300);
+        printf("Second string %s\n",extBuf);
+
+        bufPull(testBuffer,extBuf,300);
+        printf("Third string %s\n",extBuf);
+
+}

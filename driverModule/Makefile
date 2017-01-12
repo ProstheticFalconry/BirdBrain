@@ -1,15 +1,15 @@
 LDIR = lib
 SRCDIR = src
 IDIR = include
-
-CCFLAGS = -I$(IDIR) -I/usr/include/libxml2
+CC=gcc
+CCFLAGS = -I$(IDIR) -I/usr/include/libxml2 -Wall
 
 LIBS = -lm -lxml2
 
 _SRCS = driverMain
 SRCS = $(patsubst %,$(IDIR)/%.h,$(_SRCS))
 
-_LLIBS = xmlMsgBuffer
+_LLIBS = ringBuf
 LLIBS = $(patsubst %,$(IDIR)/%.h,$(_LLIBS))
 
 OBJ = $(patsubst %,%.o,$(_LLIBS))
