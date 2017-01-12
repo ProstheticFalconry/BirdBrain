@@ -4,8 +4,17 @@
 #include "testBin.h"
 
 int main(int argc,char *argv[]){
-	//case1(300);
-	case1(50,30);
+	printf("Oversized ring buf, oversized extBuf\n");
+	case1(50,20);
+	printf("\n\n");
+	printf("Undersized ring buf, oversized extBuf\n");
+	case1(40,20);
+	printf("\n\n");
+	printf("Oversized ring buf, undersized extBuf\n");
+	case1(50,10);
+	printf("\n\n");
+	printf("Undersized ring buf, undersized extBuf\n");
+	case1(40,10);
 }
 
 void case1(int bufSize, int extBufSize){
@@ -27,13 +36,13 @@ void case1(int bufSize, int extBufSize){
         printf("Returned %d\n",bufPush(testBuffer,string3));
 
         printf("Pull returned %d\n",bufPull(testBuffer,extBuf,extBufSize));
-        printf("First string %s\n",extBufSize);
+        printf("First string %s\n",extBuf);
         
         printf("Pull returned %d\n",bufPull(testBuffer,extBuf,extBufSize));
-        printf("Second string %s\n",extBufSize);
+        printf("Second string %s\n",extBuf);
 
         printf("Pull returned %d\n",bufPull(testBuffer,extBuf,extBufSize));
-        printf("Third string %s\n",extBufSize);
+        printf("Third string %s\n",extBuf);
 
 }
 void case2(){

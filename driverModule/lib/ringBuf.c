@@ -14,7 +14,7 @@ void memFree(void* ptr){
 }
 #else
 void *memAlloc(size_t size){
-	return (char*)kmalloc(size,GFP_KERNEL);
+	return kmalloc(size,GFP_KERNEL);
 }
 
 void memFree(void* ptr){
