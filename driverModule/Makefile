@@ -1,20 +1,20 @@
 LDIR = lib
 SRCDIR = src
-IDIR = include
 CC=gcc
-CCFLAGS = -I$(IDIR) -I/usr/include/libxml2 -Wall
-
-LIBS = -lm -lxml2
+CCFLAGS = -Ilib -I/lib/modules/4.4.47-bone-rt-r16/build/arch/arm/include/
 
 _SRCS = driverMain
-SRCS = $(patsubst %,$(IDIR)/%.h,$(_SRCS))
+SRCS = $(patsubst %,%.h,$(_SRCS))
 
 _LLIBS = ringBuf
-LLIBS = $(patsubst %,$(IDIR)/%.h,$(_LLIBS))
+LLIBS = $(patsubst %,lib/%.h,$(_LLIBS))
 
 OBJ = $(patsubst %,%.o,$(_LLIBS))
 MOBJ := $(OBJ) $(patsubst %,%.o,$(_SRCS))
 TOBJ := $(OBJ) testBin.o
+obj-m += flightControl.o
+driverMain-objs := ./lib/ringBuf.o
+
 
 %.o: $(LDIR)/%.c $(LLIBS) 
 	$(CC) -c $(CCFLAGS) $< -o $@
@@ -25,8 +25,8 @@ TOBJ := $(OBJ) testBin.o
 testBin.o: test/testBin.c test/testBin.h
 	$(CC) -c $(CCFLAGS) $< -o $@
 
-driverMain: $(MOBJ)
-	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS)
+flightControl:
+	make -C /lib/modules/4.4.47-bone-rt-r16/build M=/home/ubuntu/birdBrain/driverModule modules
 	rm -f *.o
 
 testBin: $(TOBJ)
