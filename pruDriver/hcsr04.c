@@ -32,7 +32,6 @@ int main(void) {
 	/* Get measurements */
 	int i = 0;
 	while (i++ < 20) {
-		printf(">> Start of loop # %d\n",i+1);
 		// Wait for the PRU interrupt
 		prussdrv_pru_wait_event (PRU_EVTOUT_0);
 		prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);

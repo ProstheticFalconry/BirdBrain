@@ -2,8 +2,11 @@
 .origin 0
 .entrypoint START
 
-// Address of the io controller for GPIO1
+// Address of the io controllers for GPIO1, GPIO2 and GPIO3
 #define GPIO1 0x4804C000
+// #define GPIO2 0x481AC000
+// #define GPIO3 0x481AE000
+
 
 // Offset address for the output enable register of the gpio controller
 #define GPIO_OE 0x134
@@ -22,6 +25,12 @@
 // gpio1[13] P8_11 gpio45 0x034
 #define BIT_ECHO 0x0D
 
+// gpio1[30] P8_21 gpio62 0x80
+// #define BIT_TRIGGER1 0x1E
+
+// gpio[31] P8_20 gpio63 0x84
+// #define BIT_ECHO1 0x1F
+
 #define delay r0
 #define roundtrip r4
 
@@ -36,6 +45,8 @@ START:
 	SBCO r0, C4, 4, 4
 	
 	// Make constant 24 (c24) point to the beginning of PRU0 data ram
+        // 0x22000 is PRU_CTRL Registers. 0x20 is the offset for register that determines C24 address
+        // SBBO copies 4 bytes of r0 to r1
 	MOV r0, 0x00000000
 	MOV r1, 0x22020
 	SBBO r0, r1, 0, 4
@@ -72,7 +83,7 @@ WAIT_ECHO:
 	// Read the GPIO until BIT_ECHO goes high
 	LBBO r2, r3, 0, 4
 	QBBC WAIT_ECHO, r2, BIT_ECHO
-	
+
 	// roundtrip measures the echo duration in microseconds, resolution is 1us
 	MOV roundtrip, 0
 
