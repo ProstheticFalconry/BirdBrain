@@ -1,28 +1,35 @@
-CXXFLAGS=-I$(IDIR)
+LDIR = lib
+SRCDIR = src
+IDIR = include
+CC=gcc
+CCFLAGS = -I$(IDIR)
 
-LDIR=lib
-SRCDIR=src
-IDIR=include
+LIBS =
 
+_SRCS = main
+SRCS = $(patsubst %,$(IDIR)/%.h,$(_SRCS))
 
-LIBS=-lm
-
-_SRCS=driverMain
-SRCS=$(patsubst %,$(IDIR)/%.h,$(_SRCS))
-
-_LLIBS = testdep
-LLIBS=$(patsubst %,$(IDIR)/%.h,$(_LLIBS))
+_LLIBS = lib1
+LLIBS = $(patsubst %,$(IDIR)/%.h,$(_LLIBS))
 
 OBJ = $(patsubst %,%.o,$(_LLIBS))
-OBJ += $(patsubst %,%.o,$(_SRCS))
+MOBJ := $(OBJ) $(patsubst %,%.o,$(_SRCS))
+TOBJ := $(OBJ) testBin.o
 
+%.o: $(LDIR)/%.c $(LLIBS) 
+	$(CC) -c $(CCFLAGS) $< -o $@
 
-%.o: $(LDIR)/%.cpp $(LLIBS) 
-	$(CXX) -c $(CXXFLAGS) $< -o $@
+%.o: $(SRCDIR)/%.c $(SRCS)
+	$(CC) -c $(CCFLAGS) $< -o $@
 
-%.o: $(SRCDIR)/%.cpp $(SRCS)
-	$(CXX) -c $(CXXFLAGS) $< -o $@
+testBin.o: test/testBin.c test/testBin.h
+	$(CC) -c $(CCFLAGS) $< -o $@
 
-driverMain: $(OBJ)
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
-	rm -f *.o *~ core $(INCDIR)/*~
+flightControl: $(MOBJ)
+	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS)
+	rm -f *.o
+
+testBin: $(TOBJ)
+	$(CC) -o $@ $^ $(CCFLAGS) $(LIBS)
+	mv testBin test
+	rm -f *.o
