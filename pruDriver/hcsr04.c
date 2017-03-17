@@ -31,6 +31,12 @@ int main(void) {
 	prussdrv_exec_program(0, "hcsr04.bin");
 	/* Get measurements */
 	int i = 0;
+	
+	pruData[0] = 585;
+	pruData[1] = 585*2;
+	pruData[2] = 585*3;
+	pruData[3] = 585*4;
+	pruData[4] = 585*5;
 	while (i++ < 20) {
 		// Wait for the PRU interrupt
 		prussdrv_pru_wait_event (PRU_EVTOUT_0);
@@ -39,7 +45,13 @@ int main(void) {
 		// Print the distance received from the sonar
 		// At 20 degrees in dry air the speed of sound is 342.2 cm/sec
 		// so it takes 29.12 us to make 1 cm, i.e. 58.44 us for a roundtrip of 1 cm
-		printf("%3d: Distance = %.2f cm\n", i, (float) pruData[0] / 58.44);
+		
+		printf("Sonar 1: (%3d) Distance = %.2f cm\n", i, (float) pruData[0] / 58.44);
+		printf("Sonar 2: (%3d) Distance = %.2f cm\n", i, (float) *(pruData+1) / 58.44);
+		
+		//printf("pruData[0] = %x \n", pruData[0]);
+		//printf("pruData[1] = %x \n", pruData[1]);
+
 		sleep(1);
 	}
 

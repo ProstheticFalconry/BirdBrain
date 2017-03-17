@@ -16,20 +16,31 @@
 #define GPIO_CLEARDATAOUT 0x190
 #define GPIO_SETDATAOUT 0x194
 
+// gpio1[30] P8_21 gpio62 0x80
+#define BIT_TRIGGER62 0x1E
+
+// gpio[31] P8_20 gpio63 0x84
+#define BIT_ECHO63 0x1F
+
+//gpio1[14] P8_16 gpio46 0x
+#define BIT_TRIGGER46 0x0E
+
+//gpio1[15] P8_15 gpio47 0x
+#define BIT_ECHO47 0x0F
+
+// gpio1[12] P8_12 gpio44 0x030
+#define BIT_TRIGGER44 0x0C
+
+// gpio1[13] P8_11 gpio45 0x034
+#define BIT_ECHO45 0x0D
+
 // PRU interrupt for PRU0
 #define PRU0_ARM_INTERRUPT 19
 
-// gpio1[12] P8_12 gpio44 0x030
-#define BIT_TRIGGER 0x0C
-
-// gpio1[13] P8_11 gpio45 0x034
-#define BIT_ECHO 0x0D
-
-// gpio1[30] P8_21 gpio62 0x80
-// #define BIT_TRIGGER1 0x1E
-
-// gpio[31] P8_20 gpio63 0x84
-// #define BIT_ECHO1 0x1F
+// ChooseTriggerAndEchoPins
+#define BIT_TRIGGER BIT_TRIGGER46
+#define BIT_ECHO BIT_ECHO47
+#define BIT_ECHO1 BIT_ECHO45
 
 #define delay r0
 #define roundtrip r4
@@ -50,12 +61,16 @@ START:
 	MOV r0, 0x00000000
 	MOV r1, 0x22020
 	SBBO r0, r1, 0, 4
+        
+        MOV r5, 0x00000000
+        MOV r6, 0x00000004
 	
 	// Enable trigger as output and echo as input (clear BIT_TRIGGER and set BIT_ECHO of output enable)
 	MOV r3, GPIO1 | GPIO_OE
 	LBBO r2, r3, 0, 4
 	CLR r2, BIT_TRIGGER
 	SET r2, BIT_ECHO
+        SET r2, BIT_ECHO1
 	SBBO r2, r3, 0, 4
 
 TRIGGER:
@@ -103,10 +118,62 @@ SAMPLE_ECHO_DELAY:
 	QBBS SAMPLE_ECHO, r2, BIT_ECHO
 
 	// Echo is complete
-	// Store the microsecond count in the PRU's data ram so C program can read it
-	SBCO roundtrip, c24, 0, 4
-	
-	// Trigger the PRU0 interrupt (C program gets the event)
+	// Store the microsecond count in the PRUs data ram so C program can read it
+	SBBO roundtrip, r5, 0, 4
+
+
+
+TRIGGER1:
+
+        // Fire the sonar
+        // Set trigger pin to high
+        MOV r2, 1<<BIT_TRIGGER
+        MOV r3, GPIO1 | GPIO_SETDATAOUT
+        SBBO r2, r3, 0, 4
+        
+        // Delay 10 microseconds (200 MHz / 2 instructions = 10 ns per loop, 10 us = 1000 loops)
+        MOV delay, 1000
+TRIGGER_DELAY1:
+        SUB delay, delay, 1
+        QBNE TRIGGER_DELAY1, delay, 0
+        
+        // Set trigger pin to low
+        MOV r2, 1<<BIT_TRIGGER
+        MOV r3, GPIO1 | GPIO_CLEARDATAOUT
+        SBBO r2, r3, 0, 4
+        
+        // Wait for BIT_ECHO1 to go high, i.e. wait for the echo cycle to start
+        MOV r3, GPIO1 | GPIO_DATAIN
+WAIT_ECHO1:
+        // Read the GPIO until BIT_ECHO1 goes high
+        LBBO r2, r3, 0, 4
+        QBBC WAIT_ECHO, r2, BIT_ECHO1
+
+        // roundtrip measures the echo duration in microseconds, resolution is 1us
+        MOV roundtrip, 0
+
+SAMPLE_ECHO1:
+
+        // Delay 1 microsecond (adjusted because it takes time to query the GPIO pin)
+        MOV delay, 76
+SAMPLE_ECHO_DELAY1:
+        SUB delay, delay, 1
+        QBNE SAMPLE_ECHO_DELAY1, delay, 0
+        
+        // Add 1us to the roundtrip counter
+        ADD roundtrip, roundtrip, 1
+        
+        // Read GPIO until BIT_ECHO1 goes low
+        LBBO r2, r3, 0, 4
+        QBBS SAMPLE_ECHO1, r2, BIT_ECHO1
+
+        // Echo is complete
+        // Store the microsecond count in the PRUs data ram so C program can read it
+        // SBCO roundtrip, c24, 32, 4        
+        // SBCO roundtrip, c24, 4, 4
+
+        SBBO roundtrip, r6, 0, 4
+
 	MOV r31.b0, PRU0_ARM_INTERRUPT+16
 	
 	// Delay to allow sonar to stop resonating and sound burst to decay in environment

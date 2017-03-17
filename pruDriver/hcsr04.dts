@@ -9,8 +9,8 @@
   version = "00A0";
 
   exclusive-use =
-    "P8_12", "P8_11", "P8_21", "P8_20",
-    "GPIO44", "GPIO45", "GPIO62", "GPIO63";
+    "P8_12", "P8_11", "P8_16", "P8_15", "P8_21", "P8_20",
+    "GPIO44", "GPIO45", "GPIO46", "GPIO47", "GPIO62", "GPIO63";
 
   fragment@0 {
     target = <&am33xx_pinmux>;
@@ -31,6 +31,10 @@
 					*/
 					0x030 0x07 /* P8_12 gpio1[12] GPIO44 out pulldown Mode: 7 */
 					0x034 0x27 /* P8_11 gpio1[13] GPIO45 in pulldown Mode: 7 */
+
+					0x038 0x07 /* P8_16 gpio1[14] GPIO46 out pulldown Mode */
+					0x03c 0x27 /* P8_15 gpio1[15] GPIO47 in pulldown Mode */
+
 					0x080 0x07 /* P8_21 gpio1[30] GPIO62 out pulldown Mode: 7 */
 					0x084 0x27 /* P8_20 gpio1[31] GPIO63 in pulldown Mode: 7 */
           >;
