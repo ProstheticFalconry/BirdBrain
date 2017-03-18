@@ -1,0 +1,7 @@
+Changes to Makefile
+1. Changed path for new cape overlay "hcsr04-00A0.dtbo to /sys/devices/platform/bone_capemgr/slots. This is an update from the 3.8 kernel's path
+
+2. hcsr04 section required changes due to an update to gcc syntax
+  old:	$(CC) -lpthread -lprussdrv -o hcsr04 hcsr04.o -lpthread -lprussdrv
+  new:	$(CC) -o hcsr04 hcsr04.o -lpthread -lprussdrv
+
