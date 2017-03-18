@@ -7,6 +7,9 @@
 // #define GPIO2 0x481AC000
 // #define GPIO3 0x481AE000
 
+// Address of the PRUn_CTRL registers
+#define PRU0_CTRL 0x22000
+#define PRU1_CTRL 0x24000
 
 // Offset address for the output enable register of the gpio controller
 #define GPIO_OE 0x134
@@ -15,6 +18,12 @@
 #define GPIO_DATAIN 0x138
 #define GPIO_CLEARDATAOUT 0x190
 #define GPIO_SETDATAOUT 0x194
+
+// Offset address for the CYCLE register of PRU controller
+#define CYCLE 0xC
+
+// Bit for enabling the cycle counter on PRU_CTRL register
+#define CTR_EN 3
 
 // gpio1[30] P8_21 gpio62 0x80
 #define BIT_TRIGGER62 0x1E
@@ -43,7 +52,7 @@
 #define BIT_ECHO1 BIT_ECHO45
 
 #define MAX_TIME 2230
-#define WAIT_TIME 5000000
+#define WAIT_TIME 2000000
 #define delay r0
 #define roundtrip r4
 
@@ -63,16 +72,26 @@ START:
 	MOV r0, 0x00000000
 	MOV r1, 0x22020
 	SBBO r0, r1, 0, 4
-        
+
+        // Enable Cycle Counter. 0x2200 is address of PRU_CTRL register. CTR_EN is bit the enables the counter
+        MOV r1, PRU0_CTRL
+        LBBO r0, r1, 0, 4
+        SET r0, CTR_EN
+        SBBO r0, r1, 0, 4
+
 	// Enable trigger as output and echo as input (clear BIT_TRIGGER and set BIT_ECHO of output enable)
-	MOV r3, GPIO1 | GPIO_OE
-	LBBO r2, r3, 0, 4
-	CLR r2, BIT_TRIGGER
-	SET r2, BIT_ECHO
-        SET r2, BIT_ECHO1
-	SBBO r2, r3, 0, 4
+	MOV r1, GPIO1 | GPIO_OE
+	LBBO r0, r1, 0, 4
+	CLR r0, BIT_TRIGGER
+	SET r0, BIT_ECHO
+        SET r0, BIT_ECHO1
+	SBBO r0, r1, 0, 4
 
 TRIGGER:
+        // READ cycle counter
+        MOV r1, PRU0_CTRL | CYCLE
+        LBBO r2, r1, 0, 4
+        SBCO r2, c24, 8, 4
 
 	// Fire the sonar
 	// Set trigger pin to high
@@ -94,11 +113,11 @@ TRIGGER_DELAY:
 	// Wait for BIT_ECHO to go high, i.e. wait for the echo cycle to start
 	MOV r3, GPIO1 | GPIO_DATAIN
         // Initialize timeout
-        MOV r5, MAX_TIME
+        // MOV r5, MAX_TIME
 WAIT_ECHO:
 	// Check for TIMEOUT
-        SUB r5, r5, 1
-        QBEQ TIMEOUT, r5, 0
+        // SUB r5, r5, 1
+        // QBEQ TIMEOUT, r5, 0
         // Read the GPIO until BIT_ECHO goes high
 	LBBO r2, r3, 0, 4
 	QBBC WAIT_ECHO, r2, BIT_ECHO
@@ -126,8 +145,7 @@ NO_TIMEOUT:
 	// Echo is complete
 	// Store the microsecond count in the PRUs data ram so C program can read it
 	SBCO roundtrip, c24, 0, 4
-        SBCO r5, c24, 8, 4        
-        
+
         // Interrupt to cause printf to trigger
         // MOV r31.b0, PRU0_ARM_INTERRUPT+16
         
@@ -157,11 +175,11 @@ TRIGGER_DELAY1:
         
         // Wait for BIT_ECHO1 to go high, i.e. wait for the echo cycle to start
         MOV r3, GPIO1 | GPIO_DATAIN
-        MOV r5, MAX_TIME
+        // MOV r5, MAX_TIME
 WAIT_ECHO1:
         // Check for timeout
-        SUB r5, r5, 1
-        QBEQ TIMEOUT1, r5, 0
+        // SUB r5, r5, 1
+        // QBEQ TIMEOUT1, r5, 0
 
         // Read the GPIO until BIT_ECHO1 goes high
         LBBO r2, r3, 0, 4
@@ -192,9 +210,8 @@ NO_TIMEOUT1:
         // Store the microsecond count in the PRUs data ram so C program can read it
         // SBCO roundtrip, c24, 32, 4        
         SBCO roundtrip, c24, 4, 4
-        SBCO r5, c24, 12, 4
 
-	MOV r31.b0, PRU0_ARM_INTERRUPT+16
+	//MOV r31.b0, PRU0_ARM_INTERRUPT+16
 	
 	// Delay to allow sonar to stop resonating and sound burst to decay in environment
 	MOV delay, WAIT_TIME

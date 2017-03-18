@@ -17,10 +17,9 @@ int main(void) {
 		fprintf(stderr, ">> PRU open failed\n");
 		return 1;
 	}
-
 	/* Get the interrupt initialized */
-	prussdrv_pruintc_init(&pruss_intc_initdata);
-
+	//prussdrv_pruintc_init(&pruss_intc_initdata);
+	
 	/* Get pointers to PRU local memory */
 	void *pruDataMem;
 	prussdrv_map_prumem(PRUSS0_PRU0_DATARAM, &pruDataMem);
@@ -31,11 +30,16 @@ int main(void) {
 	prussdrv_exec_program(0, "hcsr04.bin");
 	/* Get measurements */
 	int i = 0;
+	pruData[0] = 0;
+	pruData[1] = 0;
+	pruData[2] = 0;
+	pruData[3] = 0;
 	
 	while (i++ < 20) {
+		for (int j = 0; j < 1000000; j++);
 		// Wait for the PRU interrupt
-		prussdrv_pru_wait_event (PRU_EVTOUT_0);
-		prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+		//prussdrv_pru_wait_event (PRU_EVTOUT_0);
+		//prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
 		
 		// Print the distance received from the sonar
 		// At 20 degrees in dry air the speed of sound is 342.2 cm/sec
@@ -43,20 +47,9 @@ int main(void) {
 		
 		//printf("Sonar 1: (%3d) Distance = %.2f cm\n", i, (float) pruData[0] / 58.44);
 		//printf("Sonar 2: (%3d) Distance = %.2f cm\n", i, (float) *(pruData+1) / 58.44);
-		if (pruData[0] == 0xffffffff){
-			printf("Sonar 1: (%3d) TIMEOUT\n", i);
-		} else {
-			printf("Sonar 1: (%3d) Distance = %.2f cm\n", i, (float) pruData[0] / 58.44);
-		}
-		printf("Sonar 1: Counter = %x\n", pruData[2]);
-		if (pruData[1] == 0xffffffff){
-                        printf("Sonar 2: (%3d) TIMEOUT\n", i);
-                } else {
-                        printf("Sonar 2: (%3d) Distance = %.2f cm\n", i, (float) pruData[1] / 58.44);
-                }
-		printf("Sonar 2: Counter = %x\n", pruData[3]);
-
-
+		printf("(%2d) Sonar 1: Distance = %.2f cm\n", i, (float) pruData[0] / 61.57);
+		printf("     Sonar 2: Distance = %.2f cm\n", (float) pruData[1] / 61.57);
+		printf("CYCLE COUNTER: %u\n", pruData[2]);
 		//sleep(1);
 	}
 
