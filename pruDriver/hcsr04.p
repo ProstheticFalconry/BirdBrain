@@ -42,6 +42,8 @@
 #define BIT_ECHO BIT_ECHO47
 #define BIT_ECHO1 BIT_ECHO45
 
+#define MAX_TIME 2230
+#define WAIT_TIME 5000000
 #define delay r0
 #define roundtrip r4
 
@@ -62,9 +64,6 @@ START:
 	MOV r1, 0x22020
 	SBBO r0, r1, 0, 4
         
-        MOV r5, 0x00000000
-        MOV r6, 0x00000004
-	
 	// Enable trigger as output and echo as input (clear BIT_TRIGGER and set BIT_ECHO of output enable)
 	MOV r3, GPIO1 | GPIO_OE
 	LBBO r2, r3, 0, 4
@@ -94,14 +93,18 @@ TRIGGER_DELAY:
 	
 	// Wait for BIT_ECHO to go high, i.e. wait for the echo cycle to start
 	MOV r3, GPIO1 | GPIO_DATAIN
+        // Initialize timeout
+        MOV r5, MAX_TIME
 WAIT_ECHO:
-	// Read the GPIO until BIT_ECHO goes high
+	// Check for TIMEOUT
+        SUB r5, r5, 1
+        QBEQ TIMEOUT, r5, 0
+        // Read the GPIO until BIT_ECHO goes high
 	LBBO r2, r3, 0, 4
 	QBBC WAIT_ECHO, r2, BIT_ECHO
 
 	// roundtrip measures the echo duration in microseconds, resolution is 1us
 	MOV roundtrip, 0
-
 SAMPLE_ECHO:
 
 	// Delay 1 microsecond (adjusted because it takes time to query the GPIO pin)
@@ -112,18 +115,28 @@ SAMPLE_ECHO_DELAY:
 	
 	// Add 1us to the roundtrip counter
 	ADD roundtrip, roundtrip, 1
-	
-	// Read GPIO until BIT_ECHO goes low
+
+        // Read GPIO until BIT_ECHO goes low
 	LBBO r2, r3, 0, 4
 	QBBS SAMPLE_ECHO, r2, BIT_ECHO
-
+        QBA NO_TIMEOUT
+TIMEOUT:
+        MOV roundtrip, 0xFFFFFFFF
+NO_TIMEOUT:
 	// Echo is complete
 	// Store the microsecond count in the PRUs data ram so C program can read it
-	SBBO roundtrip, r5, 0, 4
+	SBCO roundtrip, c24, 0, 4
+        SBCO r5, c24, 8, 4        
+        
+        // Interrupt to cause printf to trigger
+        // MOV r31.b0, PRU0_ARM_INTERRUPT+16
+        
+        // Delay to allow sonar to stop resonating and sound burst to decay in environment
+        MOV delay, WAIT_TIME
+RESET_DELAY1:
+        SUB delay, delay, 1
+        QBNE RESET_DELAY1, delay, 0
 
-
-
-TRIGGER1:
 
         // Fire the sonar
         // Set trigger pin to high
@@ -144,16 +157,20 @@ TRIGGER_DELAY1:
         
         // Wait for BIT_ECHO1 to go high, i.e. wait for the echo cycle to start
         MOV r3, GPIO1 | GPIO_DATAIN
+        MOV r5, MAX_TIME
 WAIT_ECHO1:
+        // Check for timeout
+        SUB r5, r5, 1
+        QBEQ TIMEOUT1, r5, 0
+
         // Read the GPIO until BIT_ECHO1 goes high
         LBBO r2, r3, 0, 4
-        QBBC WAIT_ECHO, r2, BIT_ECHO1
+        QBBC WAIT_ECHO1, r2, BIT_ECHO1
 
         // roundtrip measures the echo duration in microseconds, resolution is 1us
         MOV roundtrip, 0
 
 SAMPLE_ECHO1:
-
         // Delay 1 microsecond (adjusted because it takes time to query the GPIO pin)
         MOV delay, 76
 SAMPLE_ECHO_DELAY1:
@@ -166,18 +183,21 @@ SAMPLE_ECHO_DELAY1:
         // Read GPIO until BIT_ECHO1 goes low
         LBBO r2, r3, 0, 4
         QBBS SAMPLE_ECHO1, r2, BIT_ECHO1
+        QBA NO_TIMEOUT1
+TIMEOUT1:
+        MOV roundtrip, 0xFFFFFFFF
+NO_TIMEOUT1:
 
         // Echo is complete
         // Store the microsecond count in the PRUs data ram so C program can read it
         // SBCO roundtrip, c24, 32, 4        
-        // SBCO roundtrip, c24, 4, 4
-
-        SBBO roundtrip, r6, 0, 4
+        SBCO roundtrip, c24, 4, 4
+        SBCO r5, c24, 12, 4
 
 	MOV r31.b0, PRU0_ARM_INTERRUPT+16
 	
 	// Delay to allow sonar to stop resonating and sound burst to decay in environment
-	MOV delay, 3000000
+	MOV delay, WAIT_TIME
 RESET_DELAY:
 	SUB delay, delay, 1
 	QBNE RESET_DELAY, delay, 0
