@@ -1,7 +1,7 @@
 LDIR = lib
 SRCDIR = src
 CC=gcc
-CCFLAGS = -Ilib -I/lib/modules/4.4.47-bone-rt-r16/build/arch/arm/include/
+#CCFLAGS = -Ilib -I/lib/modules/4.4.47-bone-rt-r16/build/arch/arm/include/
 
 _SRCS = driverMain
 SRCS = $(patsubst %,%.h,$(_SRCS))
@@ -13,7 +13,7 @@ OBJ = $(patsubst %,%.o,$(_LLIBS))
 MOBJ := $(OBJ) $(patsubst %,%.o,$(_SRCS))
 TOBJ := $(OBJ) testBin.o
 obj-m += flightControl.o
-driverMain-objs := ./lib/ringBuf.o
+flightControl-objs := lib/ringBuf.o flightControlMain.o
 
 
 %.o: $(LDIR)/%.c $(LLIBS) 

@@ -6,19 +6,17 @@
 #include <asm/div64.h>
 
 MODULE_LICENSE("GPL");              ///< The license type -- this affects runtime behavior
-MODULE_AUTHOR("Derek Molloy");      ///< The author -- visible when you use modinfo
-MODULE_DESCRIPTION("A simple Linux driver for the BBB.");  ///< The description -- see modinfo
+MODULE_AUTHOR("Mihai Esanu");      ///< The author -- visible when you use modinfo
+MODULE_DESCRIPTION("Simple ringbuffer library");  ///< The description -- see modinfo
 MODULE_VERSION("0.1");              ///< The version of the module
 
 
 
 void *memAlloc(size_t size){
-	//return malloc(size);
 	return kmalloc(size,GFP_KERNEL);
 }
 
 void memFree(void* ptr){
-	//free(ptr);
 	kfree(ptr);
 }
 RingBuf* bufInit(unsigned long long capacity){
@@ -77,7 +75,7 @@ int bufPull(RingBuf *ringBuf,char* output,unsigned long long bufSize){
 	unsigned long long bufUse=ringBuf->bufUse;
 	ptr=ringBuf->buf;
 	if(ringBuf->bufUse==0){
-                return 1;
+                return 0;
         }
 	*output=*(ptr+index);
 	bufUse--;
@@ -85,7 +83,7 @@ int bufPull(RingBuf *ringBuf,char* output,unsigned long long bufSize){
 		if(bufUse==0 || ++counter==bufSize){
 			*output='\0';
 			ringBuf->bufUse=bufUse;
-			return 1;
+			return counter;
 		}
 		index++;
 		bufUse--;
@@ -93,7 +91,7 @@ int bufPull(RingBuf *ringBuf,char* output,unsigned long long bufSize){
 	}
 	ringBuf->tail=mod64(index,capacity)+1;
 	ringBuf->bufUse=bufUse;
-	return 0;
+	return counter;
 }
 
 unsigned long long mod64(unsigned long long num, unsigned long long base){

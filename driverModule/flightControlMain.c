@@ -1,13 +1,39 @@
-/* heavily modified example from http://derekmolloy.ie/writing-a-linux-kernel-module-part-1-introduction/ */
-
 #include <linux/init.h>           // Macros used to mark up functions e.g. __init __exit
 #include <linux/module.h>         // Core header for loading LKMs into the kernel
 #include <linux/device.h>         // Header to support the kernel Driver Model
 #include <linux/kernel.h>         // Contains types, macros, functions for the kernel
 #include <linux/fs.h>             // Header for the Linux file system support
-#include <asm/uaccess.h>          // Required for the copy to user function
-#define  DEVICE_NAME "fly0"    ///< The device will appear at /dev/ebbchar using this value
-#define  CLASS_NAME  "flight_cntrl"        ///< The device class -- this is a character device driver
+#include <asm/uaccess.h>          // Required for the copy to user functioni
+#include "lib/ringBuf.h"
+
+#define MAX_BUF_SIZE 1024
+#define CHAN_BUF_SIZE 10
+
+#define MAJOR_NUMBER 0
+
+#define FLY0_MN 0
+#define THROT_MN 1
+#define ROLL_MN 2
+#define PITCH_MN 3
+#define YAW_MN 4
+#define MODE_MN 5 
+
+#define ASCII_F 102
+#define ASCII_T 116
+#define ASCII_R 114
+#define ASCII_P 112
+#define ASCII_Y 121
+#define ASCII_M 109
+
+#define FDIR "fly/"
+
+#define DEVICE_NAME FDIR "fly0"
+#define THROTTLE_CHAN FDIR "thr"
+#define ROLL_CHAN FDIR "roll"
+#define PITCH_CHAN FDIR "ptc"
+#define YAW_CHAN FDIR "yaw"
+#define MODE_CHAN FDIR "mode"
+#define CLASS_NAME  "flight_cntrl"        ///< The device class -- this is a character device driver
  
 MODULE_LICENSE("GPL");            ///< The license type -- this affects available functionality
 MODULE_AUTHOR("Mihai Esanu");    ///< The author -- visible when you use modinfo
@@ -15,21 +41,30 @@ MODULE_DESCRIPTION("Provides a series of I/O buffers for communication with the 
 MODULE_VERSION("0.1");            ///< A version number to inform users
  
 static int    majorNumber;                  ///< Stores the device number -- determined automatically
-static char   message[256] = {0};           ///< Memory for the string that is passed from userspace
-static short  size_of_message;              ///< Used to remember the size of the string stored
-static struct class*  ebbcharClass  = NULL; ///< The device-driver class struct pointer
-static struct device* ebbcharDevice = NULL; ///< The device-driver device struct pointer
- 
+
+static RingBuf *mainBuf;
+
+static char chanMessage[CHAN_BUF_SIZE];
+static char chanInBuf[CHAN_BUF_SIZE];
+static char chanOutBuf[CHAN_BUF_SIZE];
+
+static struct class*  flightClass  = NULL; ///< The device-driver class struct pointer
+static struct device* fly0Device = NULL; ///< The device-driver device struct pointer
+static struct device* throtDevice = NULL;
+static struct device* pitchDevice = NULL;
+static struct device* rollDevice = NULL;
+static struct device* yawDevice = NULL;
+static struct device* modeDevice = NULL;
 // The prototype functions for the character driver -- must come before the struct definition
 static int     dev_open(struct inode *, struct file *);
 static int     dev_release(struct inode *, struct file *);
 static ssize_t dev_read(struct file *, char *, size_t, loff_t *);
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
- 
-/** @brief Devices are represented as file structure in the kernel. The file_operations structure from
- *  /linux/fs.h lists the callback functions that you wish to associated with your file operations
- *  using a C99 syntax structure. char devices usually implement open, read, write and release calls
- */
+
+int register_devices(int majorNumber);
+void destroy_devices(int majorNumber);
+void deregister_devices(int majorNumber);
+
 static struct file_operations fops =
 {
    .open = dev_open,
@@ -37,7 +72,7 @@ static struct file_operations fops =
    .write = dev_write,
    .release = dev_release,
 };
- 
+
 /** @brief The LKM initialization function
  *  The static keyword restricts the visibility of the function to within this C file. The __init
  *  macro means that for a built-in driver (not a LKM) the function is only used at initialization
@@ -56,35 +91,40 @@ static int __init flightControl_init(void){
    printk(KERN_INFO "FlightControl: registered correctly with major number %d\n", majorNumber);
  
    // Register the device class
-   ebbcharClass = class_create(THIS_MODULE, CLASS_NAME);
-   if (IS_ERR(ebbcharClass)){                // Check for error and clean up if there is
+   flightClass = class_create(THIS_MODULE, CLASS_NAME);
+   if (IS_ERR(flightClass)){                // Check for error and clean up if there is
       unregister_chrdev(majorNumber, DEVICE_NAME);
       printk(KERN_ALERT "Failed to register device class\n");
-      return PTR_ERR(ebbcharClass);          // Correct way to return an error on a pointer
+      return PTR_ERR(flightClass);          // Correct way to return an error on a pointer
    }
    printk(KERN_INFO "FlightControl: device class registered correctly\n");
- 
-   // Register the device driver
-   ebbcharDevice = device_create(ebbcharClass, NULL, MKDEV(majorNumber, 0), NULL, DEVICE_NAME);
-   if (IS_ERR(ebbcharDevice)){               // Clean up if there is an error
-      class_destroy(ebbcharClass);           // Repeated code but the alternative is goto statements
-      unregister_chrdev(majorNumber, DEVICE_NAME);
+
+   if (register_devices(majorNumber)){               // Clean up if there is an error
+      class_destroy(flightClass);           // Repeated code but the alternative is goto statements
+      deregister_devices(majorNumber);
       printk(KERN_ALERT "Failed to create the device\n");
-      return PTR_ERR(ebbcharDevice);
+      return 1;
    }
    printk(KERN_INFO "FlightControl: device class created correctly\n"); // Made it! device was initialized
+   mainBuf=bufInit(MAX_BUF_SIZE);
+   if(!mainBuf){
+   	printk(KERN_ALERT,"Couldn't allocated ringbuf\n");
+
+
+   }
    return 0;
 }
- 
+
+
 /** @brief The LKM cleanup function
  *  Similar to the initialization function, it is static. The __exit macro notifies that if this
  *  code is used for a built-in driver (not a LKM) that this function is not required.
  */
 static void __exit flightControl_exit(void){
-   device_destroy(ebbcharClass, MKDEV(majorNumber, 0));     // remove the device
-   class_unregister(ebbcharClass);                          // unregister the device class
-   class_destroy(ebbcharClass);                             // remove the device class
-   unregister_chrdev(majorNumber, DEVICE_NAME);             // unregister the major number
+   destroy_devices(majorNumber);
+   class_unregister(flightClass);                          // unregister the device class
+   class_destroy(flightClass);                             // remove the device class
+   deregister_devices(majorNumber);             // unregister the major number
    printk(KERN_INFO "FlightControl: Goodbye from the LKM!\n");
 }
  
@@ -107,18 +147,15 @@ static int dev_open(struct inode *inodep, struct file *filep){
  *  @param offset The offset if required
  */
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
-   int error_count = 0;
-   // copy_to_user has the format ( * to, *from, size) and returns 0 on success
-   error_count = copy_to_user(buffer, message, size_of_message);
- 
-   if (error_count==0){            // if true then have success
-      printk(KERN_INFO "FlightControl: Sent %d characters to the user\n", size_of_message);
-      return (size_of_message=0);  // clear the position to the start and return 0
+   char firstLetter;
+   unsigned long long msgSize;
+   firstLetter = filep->f_path.dentry->d_iname[0];
+   if (firstLetter == "f"){
+   	msgSize=bufPull(mainBuf,chanOutBuf,CHAN_BUF_SIZE);
+	copy_to_user(buffer,chanOutBuf,msgSize);
+	return 0;	
    }
-   else {
-      printk(KERN_INFO "FlightControl: Failed to send %d characters to the user\n", error_count);
-      return -EFAULT;              // Failed -- return a bad address message (i.e. -14)
-   }
+   return -EFAULT;
 }
  
 /** @brief This function is called whenever the device is being written to from user space i.e.
@@ -130,10 +167,36 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
  *  @param offset The offset if required
  */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset){
-   sprintf(message, "%s(%zu letters)", buffer, len);   // appending received string with its length
-   size_of_message = strlen(message);                 // store the length of the stored message
-   printk(KERN_INFO "FlightControl: Received %zu characters from the user\n", len);
-   return len;
+   char firstLetter;
+   
+   firstLetter=filep->f_path.dentry->d_iname[0]; 
+      
+   switch(firstLetter){
+   	case ASCII_R:
+		chanInBuf[0]=ROLL_MN;
+		break;
+	case ASCII_P:
+		chanInBuf[0]=PITCH_MN;
+		break;
+	case ASCII_Y:
+		chanInBuf[0]=YAW_MN;
+		break;
+	case ASCII_T:
+		chanInBuf[0]=THROT_MN;
+		break;
+	case ASCII_M:
+		//chanMessage[0]=MODE_MN;
+		break;
+	case ASCII_F:
+		break;
+   }
+   if (len >= CHAN_BUF_SIZE-1)
+        return -EFAULT;
+   copy_from_user(chanMessage,buffer,CHAN_BUF_SIZE);
+   sprintf((chanInBuf+1),"%s",chanMessage);
+   bufPush(mainBuf,chanInBuf);
+   printk(KERN_INFO "FlightControl: Woopsies Received %zu characters from the user\n", len);
+   return 0;
 }
  
 /** @brief The device release function that is called whenever the device is closed/released by
@@ -146,6 +209,34 @@ static int dev_release(struct inode *inodep, struct file *filep){
    return 0;
 }
  
+int register_devices(int majorNumber){
+   fly0Device = device_create(flightClass, NULL, MKDEV(majorNumber, FLY0_MN), NULL, DEVICE_NAME);
+   throtDevice = device_create(flightClass, NULL, MKDEV(majorNumber, THROT_MN), NULL, THROTTLE_CHAN);
+   pitchDevice = device_create(flightClass, NULL, MKDEV(majorNumber, PITCH_MN), NULL, PITCH_CHAN);
+   rollDevice = device_create(flightClass, NULL, MKDEV(majorNumber, ROLL_MN), NULL, ROLL_CHAN);
+   yawDevice = device_create(flightClass, NULL, MKDEV(majorNumber,YAW_MN), NULL, YAW_CHAN);
+   modeDevice = device_create(flightClass, NULL, MKDEV(majorNumber, MODE_MN), NULL, MODE_CHAN);
+   return (IS_ERR(fly0Device) || IS_ERR(throtDevice) || IS_ERR(pitchDevice) ||IS_ERR(rollDevice) || IS_ERR(yawDevice) || IS_ERR(modeDevice));
+}
+
+void destroy_devices(int majorNumber){
+	device_destroy(flightClass, MKDEV(majorNumber, FLY0_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, THROT_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, PITCH_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, ROLL_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, YAW_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, MODE_MN));
+}
+
+void deregister_devices(int majorNumber){
+   unregister_chrdev(majorNumber, DEVICE_NAME);
+   unregister_chrdev(majorNumber, THROTTLE_CHAN);
+   unregister_chrdev(majorNumber, PITCH_CHAN);
+   unregister_chrdev(majorNumber, ROLL_CHAN);
+   unregister_chrdev(majorNumber, YAW_CHAN);
+   unregister_chrdev(majorNumber, MODE_CHAN);
+}
+
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
  *  identify the initialization function at insertion time and the cleanup function (as
  *  listed above)

@@ -2,6 +2,7 @@
 #define RINGBUF_H
 #include <stddef.h>
 typedef struct objRingBuf {
+	char isLocked;
 	unsigned long long head;
 	unsigned long long tail;
 	unsigned long long capacity;
