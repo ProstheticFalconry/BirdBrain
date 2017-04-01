@@ -54,13 +54,16 @@ int bufPush(RingBuf *ringBuf,char* input){
 	bufUse++;
         while(*input++ != '\0'){
                 if(bufUse == capacity){
+			printk(KERN_INFO "%c\n",*input);
                         *(ptr+mod64(index,capacity))='\0';
 			ringBuf->bufUse=bufUse;
 			ringBuf->head=mod64(index,capacity);
                         return 1; 
                 }
 		bufUse++;
+		index++;
                 *(ptr+mod64(index,capacity))=*input;
+		printk(KERN_INFO "%c\n",*(ptr+mod64(index,capacity)));
         }
 	ringBuf->bufUse=bufUse;
 	ringBuf->head=mod64(index,capacity)+1;
@@ -75,10 +78,12 @@ int bufPull(RingBuf *ringBuf,char* output,unsigned long long bufSize){
 	unsigned long long bufUse=ringBuf->bufUse;
 	ptr=ringBuf->buf;
 	if(ringBuf->bufUse==0){
-                return 0;
+		return 0;
         }
 	*output=*(ptr+index);
 	bufUse--;
+	printk(KERN_INFO "The index is %llu\n",ringBuf->tail);
+	printk(KERN_INFO "The capacity is %llu\n",capacity);
 	while(*(ptr+mod64(index,capacity)) != '\0'){
 		if(bufUse==0 || ++counter==bufSize){
 			*output='\0';
@@ -89,11 +94,14 @@ int bufPull(RingBuf *ringBuf,char* output,unsigned long long bufSize){
 		bufUse--;
 		*++output=*(ptr+mod64(index,capacity));	
 	}
+	printk(KERN_INFO "counter is %u\n",(unsigned int)counter);
 	ringBuf->tail=mod64(index,capacity)+1;
 	ringBuf->bufUse=bufUse;
 	return counter;
 }
 
 unsigned long long mod64(unsigned long long num, unsigned long long base){
-	return num-do_div(num,base);
+	if (num < base)
+		return num;
+	return num-do_div(num,base)*base;
 }

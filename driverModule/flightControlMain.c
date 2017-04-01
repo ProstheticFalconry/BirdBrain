@@ -3,20 +3,22 @@
 #include <linux/device.h>         // Header to support the kernel Driver Model
 #include <linux/kernel.h>         // Contains types, macros, functions for the kernel
 #include <linux/fs.h>             // Header for the Linux file system support
+#include <linux/string.h>
 #include <asm/uaccess.h>          // Required for the copy to user functioni
 #include "lib/ringBuf.h"
+
 
 #define MAX_BUF_SIZE 1024
 #define CHAN_BUF_SIZE 10
 
 #define MAJOR_NUMBER 0
 
-#define FLY0_MN 0
-#define THROT_MN 1
-#define ROLL_MN 2
-#define PITCH_MN 3
-#define YAW_MN 4
-#define MODE_MN 5 
+#define FLY0_MN 38
+#define THROT_MN 39
+#define ROLL_MN 40
+#define PITCH_MN 41
+#define YAW_MN 42
+#define MODE_MN 43 
 
 #define ASCII_F 102
 #define ASCII_T 116
@@ -27,10 +29,12 @@
 
 #define FDIR "fly/"
 
+#define TEST "test"
+
 #define DEVICE_NAME FDIR "fly0"
-#define THROTTLE_CHAN FDIR "thr"
+#define THROTTLE_CHAN FDIR "throttle"
 #define ROLL_CHAN FDIR "roll"
-#define PITCH_CHAN FDIR "ptc"
+#define PITCH_CHAN FDIR "pitch"
 #define YAW_CHAN FDIR "yaw"
 #define MODE_CHAN FDIR "mode"
 #define CLASS_NAME  "flight_cntrl"        ///< The device class -- this is a character device driver
@@ -44,9 +48,9 @@ static int    majorNumber;                  ///< Stores the device number -- det
 
 static RingBuf *mainBuf;
 
-static char chanMessage[CHAN_BUF_SIZE];
-static char chanInBuf[CHAN_BUF_SIZE];
-static char chanOutBuf[CHAN_BUF_SIZE];
+static char chanMessage[CHAN_BUF_SIZE]={0};
+static char chanInBuf[CHAN_BUF_SIZE]={0};
+static char chanOutBuf[CHAN_BUF_SIZE]={0};
 
 static struct class*  flightClass  = NULL; ///< The device-driver class struct pointer
 static struct device* fly0Device = NULL; ///< The device-driver device struct pointer
@@ -108,9 +112,7 @@ static int __init flightControl_init(void){
    printk(KERN_INFO "FlightControl: device class created correctly\n"); // Made it! device was initialized
    mainBuf=bufInit(MAX_BUF_SIZE);
    if(!mainBuf){
-   	printk(KERN_ALERT,"Couldn't allocated ringbuf\n");
-
-
+   	printk(KERN_ALERT "Couldn't allocated ringbuf\n");
    }
    return 0;
 }
@@ -121,6 +123,7 @@ static int __init flightControl_init(void){
  *  code is used for a built-in driver (not a LKM) that this function is not required.
  */
 static void __exit flightControl_exit(void){
+   bufFree(mainBuf);
    destroy_devices(majorNumber);
    class_unregister(flightClass);                          // unregister the device class
    class_destroy(flightClass);                             // remove the device class
@@ -148,12 +151,16 @@ static int dev_open(struct inode *inodep, struct file *filep){
  */
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
    char firstLetter;
-   unsigned long long msgSize;
+   unsigned int msgSize;
+   unsigned int err;
    firstLetter = filep->f_path.dentry->d_iname[0];
-   if (firstLetter == "f"){
-   	msgSize=bufPull(mainBuf,chanOutBuf,CHAN_BUF_SIZE);
-	copy_to_user(buffer,chanOutBuf,msgSize);
-	return 0;	
+   if (firstLetter == ASCII_F){
+	printk(KERN_INFO "mainBuf has %u characters in use", (unsigned int)mainBuf->bufUse);
+   	msgSize=(unsigned int)bufPull(mainBuf,chanOutBuf,CHAN_BUF_SIZE);
+	printk(KERN_INFO "pulling from ringbuf\n%s\n%u characters pulled",chanOutBuf,msgSize);
+	err=copy_to_user(buffer,chanOutBuf,msgSize);
+	printk(KERN_INFO "produced %u errors while copying to user",err);
+	return msgSize;	
    }
    return -EFAULT;
 }
@@ -189,14 +196,16 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		break;
 	case ASCII_F:
 		break;
+	default:
+		break;
    }
    if (len >= CHAN_BUF_SIZE-1)
         return -EFAULT;
-   copy_from_user(chanMessage,buffer,CHAN_BUF_SIZE);
-   sprintf((chanInBuf+1),"%s",chanMessage);
+   copy_from_user(chanMessage,buffer,len);
+   strcpy((chanInBuf+1),chanMessage);
    bufPush(mainBuf,chanInBuf);
    printk(KERN_INFO "FlightControl: Woopsies Received %zu characters from the user\n", len);
-   return 0;
+   return len;
 }
  
 /** @brief The device release function that is called whenever the device is closed/released by
