@@ -26,7 +26,7 @@ testBin.o: test/testBin.c test/testBin.h
 	$(CC) -c $(CCFLAGS) $< -o $@
 
 flightControl:
-	make -C /lib/modules/4.4.47-bone-rt-r16/build M=/home/ubuntu/birdBrain/driverModule modules
+	make -C /lib/modules/$(shell uname -r)/build M=/home/ubuntu/birdBrain/driverModule modules
 	rm -f *.o
 
 testBin: $(TOBJ)
