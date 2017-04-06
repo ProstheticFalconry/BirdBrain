@@ -1,0 +1,11 @@
+ROLL=/dev/fly/roll
+PITCH=/dev/fly/pitch
+THROT=/dev/fly/throttle
+YAW=/dev/fly/yaw
+MODE=/dev/fly/mode
+
+echo 1200 > $MODE
+echo 1500 > $ROLL
+echo 1400 > $THROT
+
+

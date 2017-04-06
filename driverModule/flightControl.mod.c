@@ -22,7 +22,7 @@ __attribute__((section("__versions"))) = {
 	{ 0x12da5bb2, __VMLINUX_SYMBOL_STR(__kmalloc) },
 	{ 0x2e5810c6, __VMLINUX_SYMBOL_STR(__aeabi_unwind_cpp_pr1) },
 	{ 0x97255bdf, __VMLINUX_SYMBOL_STR(strlen) },
-	{ 0x105b2735, __VMLINUX_SYMBOL_STR(device_destroy) },
+	{ 0x85e09611, __VMLINUX_SYMBOL_STR(device_destroy) },
 	{ 0xe3f16a2c, __VMLINUX_SYMBOL_STR(__register_chrdev) },
 	{ 0xb1ad28e0, __VMLINUX_SYMBOL_STR(__gnu_mcount_nc) },
 	{ 0x28cc25db, __VMLINUX_SYMBOL_STR(arm_copy_from_user) },
@@ -30,7 +30,7 @@ __attribute__((section("__versions"))) = {
 	{ 0xfa2a45e, __VMLINUX_SYMBOL_STR(__memzero) },
 	{ 0x27e1a049, __VMLINUX_SYMBOL_STR(printk) },
 	{ 0xcf71899c, __VMLINUX_SYMBOL_STR(class_unregister) },
-	{ 0x5d70230c, __VMLINUX_SYMBOL_STR(device_create) },
+	{ 0xc1d75ddf, __VMLINUX_SYMBOL_STR(device_create) },
 	{ 0x59e5070d, __VMLINUX_SYMBOL_STR(__do_div64) },
 	{ 0x37a0cba, __VMLINUX_SYMBOL_STR(kfree) },
 	{ 0x64bc0742, __VMLINUX_SYMBOL_STR(class_destroy) },
@@ -45,4 +45,4 @@ __attribute__((section(".modinfo"))) =
 "depends=";
 
 
-MODULE_INFO(srcversion, "02E65326D597CA1B8749D42");
+MODULE_INFO(srcversion, "2DBB4336011086A4B479146");

@@ -1,1 +1,1 @@
-cmd_/home/ubuntu/birdBrain/driverModule/flightControl.o := ld -EL    -r -o /home/ubuntu/birdBrain/driverModule/flightControl.o /home/ubuntu/birdBrain/driverModule/lib/ringBuf.o /home/ubuntu/birdBrain/driverModule/flightControlMain.o 
+cmd_/home/ubuntu/BirdBrain/driverModule/flightControl.o := ld -EL    -r -o /home/ubuntu/BirdBrain/driverModule/flightControl.o /home/ubuntu/BirdBrain/driverModule/lib/ringBuf.o /home/ubuntu/BirdBrain/driverModule/flightControlMain.o 

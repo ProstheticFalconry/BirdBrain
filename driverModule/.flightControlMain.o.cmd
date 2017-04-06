@@ -1,8 +1,8 @@
-cmd_/home/ubuntu/birdBrain/driverModule/flightControlMain.o := gcc -Wp,-MD,/home/ubuntu/birdBrain/driverModule/.flightControlMain.o.d  -nostdinc -isystem /usr/lib/gcc/arm-linux-gnueabihf/5/include -I./arch/arm/include -Iarch/arm/include/generated/uapi -Iarch/arm/include/generated  -Iinclude -I./arch/arm/include/uapi -Iarch/arm/include/generated/uapi -I./include/uapi -Iinclude/generated/uapi -include ./include/linux/kconfig.h -D__KERNEL__ -mlittle-endian -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -std=gnu89 -fno-PIE -fno-dwarf2-cfi-asm -fno-ipa-sra -mabi=aapcs-linux -mno-thumb-interwork -mfpu=vfp -funwind-tables -mthumb -Wa,-mimplicit-it=always -Wa,-mno-warn-deprecated -D__LINUX_ARM_ARCH__=7 -march=armv7-a -msoft-float -Uarm -fno-delete-null-pointer-checks -Wno-maybe-uninitialized -fno-PIE -O2 --param=allow-store-data-races=0 -Wframe-larger-than=1024 -fstack-protector-strong -Wno-unused-but-set-variable -fno-var-tracking-assignments -pg -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fconserve-stack -Werror=implicit-int -Werror=strict-prototypes -Werror=date-time -Werror=incompatible-pointer-types -DCC_HAVE_ASM_GOTO  -DMODULE  -fno-optimize-sibling-calls -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(flightControlMain)"  -D"KBUILD_MODNAME=KBUILD_STR(flightControl)" -c -o /home/ubuntu/birdBrain/driverModule/.tmp_flightControlMain.o /home/ubuntu/birdBrain/driverModule/flightControlMain.c
+cmd_/home/ubuntu/BirdBrain/driverModule/flightControlMain.o := gcc -Wp,-MD,/home/ubuntu/BirdBrain/driverModule/.flightControlMain.o.d  -nostdinc -isystem /usr/lib/gcc/arm-linux-gnueabihf/5/include -I./arch/arm/include -Iarch/arm/include/generated/uapi -Iarch/arm/include/generated  -Iinclude -I./arch/arm/include/uapi -Iarch/arm/include/generated/uapi -I./include/uapi -Iinclude/generated/uapi -include ./include/linux/kconfig.h -D__KERNEL__ -mlittle-endian -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -std=gnu89 -fno-PIE -fno-dwarf2-cfi-asm -fno-ipa-sra -mabi=aapcs-linux -mno-thumb-interwork -mfpu=vfp -funwind-tables -mthumb -Wa,-mimplicit-it=always -Wa,-mno-warn-deprecated -D__LINUX_ARM_ARCH__=7 -march=armv7-a -msoft-float -Uarm -fno-delete-null-pointer-checks -Wno-maybe-uninitialized -fno-PIE -O2 --param=allow-store-data-races=0 -Wframe-larger-than=1024 -fstack-protector-strong -Wno-unused-but-set-variable -fno-var-tracking-assignments -pg -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -fconserve-stack -Werror=implicit-int -Werror=strict-prototypes -Werror=date-time -Werror=incompatible-pointer-types -DCC_HAVE_ASM_GOTO  -DMODULE  -fno-optimize-sibling-calls -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(flightControlMain)"  -D"KBUILD_MODNAME=KBUILD_STR(flightControl)" -c -o /home/ubuntu/BirdBrain/driverModule/.tmp_flightControlMain.o /home/ubuntu/BirdBrain/driverModule/flightControlMain.c
 
-source_/home/ubuntu/birdBrain/driverModule/flightControlMain.o := /home/ubuntu/birdBrain/driverModule/flightControlMain.c
+source_/home/ubuntu/BirdBrain/driverModule/flightControlMain.o := /home/ubuntu/BirdBrain/driverModule/flightControlMain.c
 
-deps_/home/ubuntu/birdBrain/driverModule/flightControlMain.o := \
+deps_/home/ubuntu/BirdBrain/driverModule/flightControlMain.o := \
   include/linux/init.h \
     $(wildcard include/config/broken/rodata.h) \
     $(wildcard include/config/lto.h) \
@@ -501,9 +501,9 @@ deps_/home/ubuntu/birdBrain/driverModule/flightControlMain.o := \
     $(wildcard include/config/uaccess/with/memcpy.h) \
   arch/arm/include/asm/domain.h \
     $(wildcard include/config/io/36.h) \
-  /home/ubuntu/birdBrain/driverModule/lib/ringBuf.h \
+  /home/ubuntu/BirdBrain/driverModule/lib/ringBuf.h \
   /usr/lib/gcc/arm-linux-gnueabihf/5/include/stddef.h \
 
-/home/ubuntu/birdBrain/driverModule/flightControlMain.o: $(deps_/home/ubuntu/birdBrain/driverModule/flightControlMain.o)
+/home/ubuntu/BirdBrain/driverModule/flightControlMain.o: $(deps_/home/ubuntu/BirdBrain/driverModule/flightControlMain.o)
 
-$(deps_/home/ubuntu/birdBrain/driverModule/flightControlMain.o):
+$(deps_/home/ubuntu/BirdBrain/driverModule/flightControlMain.o):
