@@ -229,7 +229,6 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
    char firstLetter;
    
    firstLetter=filep->f_path.dentry->d_iname[0]; 
-      
    switch(firstLetter){
    	case ASCII_R:
 		chanInBuf[0]=ROLL_MN;
@@ -244,7 +243,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		chanInBuf[0]=THROT_MN;
 		break;
 	case ASCII_M:
-		chanMessage[0]=MODE_MN;
+		chanInBuf[0]=MODE_MN;
 		break;
 	case ASCII_F:
 		pass_to_sensor(filep, buffer, len, offset);
