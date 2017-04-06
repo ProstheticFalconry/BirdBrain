@@ -10,6 +10,7 @@
 
 #define MAX_BUF_SIZE 1024
 #define CHAN_BUF_SIZE 10
+#define SENSOR_BUF_SIZE 32
 
 #define MAJOR_NUMBER 0
 
@@ -20,7 +21,15 @@
 #define YAW_MN 42
 #define MODE_MN 43 
 
+#define MAG_MN 44
+#define ACCEL_MN 45
+#define ALT_MN 46
+#define GYRO_MN 47
+
+#define ASCII_A 97
+#define ASCII_C 99
 #define ASCII_F 102
+#define ASCII_G 103
 #define ASCII_T 116
 #define ASCII_R 114
 #define ASCII_P 112
@@ -37,6 +46,12 @@
 #define PITCH_CHAN FDIR "pitch"
 #define YAW_CHAN FDIR "yaw"
 #define MODE_CHAN FDIR "mode"
+
+#define MAG_OUT FDIR "mag"
+#define GYRO_OUT FDIR "gyro"
+#define ALT_OUT FDIR "altitude"
+#define ACCEL_OUT FDIR "accel"
+
 #define CLASS_NAME  "flight_cntrl"        ///< The device class -- this is a character device driver
  
 MODULE_LICENSE("GPL");            ///< The license type -- this affects available functionality
@@ -52,6 +67,13 @@ static char chanMessage[CHAN_BUF_SIZE]={0};
 static char chanInBuf[CHAN_BUF_SIZE]={0};
 static char chanOutBuf[CHAN_BUF_SIZE]={0};
 
+static char sensorInBuf[CHAN_BUF_SIZE]={0};
+
+static char magBuf[SENSOR_BUF_SIZE]={0};
+static char accelBuf[SENSOR_BUF_SIZE]={0};
+static char gyroBuf[SENSOR_BUF_SIZE]={0};
+static char altBuf[SENSOR_BUF_SIZE]={0};
+
 static struct class*  flightClass  = NULL; ///< The device-driver class struct pointer
 static struct device* fly0Device = NULL; ///< The device-driver device struct pointer
 static struct device* throtDevice = NULL;
@@ -59,6 +81,10 @@ static struct device* pitchDevice = NULL;
 static struct device* rollDevice = NULL;
 static struct device* yawDevice = NULL;
 static struct device* modeDevice = NULL;
+static struct device* magDevice = NULL;
+static struct device* accelDevice = NULL;
+static struct device* gyroDevice = NULL;
+static struct device* altDevice = NULL;
 // The prototype functions for the character driver -- must come before the struct definition
 static int     dev_open(struct inode *, struct file *);
 static int     dev_release(struct inode *, struct file *);
@@ -68,6 +94,8 @@ static ssize_t dev_write(struct file *, const char *, size_t, loff_t *);
 int register_devices(int majorNumber);
 void destroy_devices(int majorNumber);
 void deregister_devices(int majorNumber);
+void pass_to_sensor(struct file *filep, const char *buffer, size_t len, loff_t *offset);
+
 
 static struct file_operations fops =
 {
@@ -151,18 +179,42 @@ static int dev_open(struct inode *inodep, struct file *filep){
  */
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
    char firstLetter;
+   char secondLetter;
    unsigned int msgSize;
-   unsigned int err;
    firstLetter = filep->f_path.dentry->d_iname[0];
-   if (firstLetter == ASCII_F){
-	printk(KERN_INFO "mainBuf has %u characters in use", (unsigned int)mainBuf->bufUse);
-   	msgSize=(unsigned int)bufPull(mainBuf,chanOutBuf,CHAN_BUF_SIZE);
-	printk(KERN_INFO "pulling from ringbuf\n%s\n%u characters pulled",chanOutBuf,msgSize);
-	err=copy_to_user(buffer,chanOutBuf,msgSize);
-	printk(KERN_INFO "produced %u errors while copying to user",err);
-	return msgSize;	
+   secondLetter = filep->f_path.dentry->d_iname[1];
+   switch(firstLetter){
+	case ASCII_F:
+   		msgSize=(unsigned int)bufPull(mainBuf,chanOutBuf,CHAN_BUF_SIZE);
+		copy_to_user(buffer,chanOutBuf,msgSize);
+		return msgSize;	
+	case ASCII_M:
+		if(secondLetter == ASCII_A){
+			msgSize=strlen(magBuf);
+			copy_to_user(buffer,magBuf,msgSize+1);
+			return 0;
+		}
+		return -EFAULT;
+	case ASCII_A:
+		if(secondLetter == ASCII_C){
+			msgSize=strlen(accelBuf);
+			copy_to_user(buffer,accelBuf,msgSize+1);
+		}
+		else{
+			msgSize=strlen(altBuf);
+			copy_to_user(buffer,altBuf,msgSize+1);
+		}
+		return 0;
+	case ASCII_G:
+		msgSize=strlen(gyroBuf);
+		gyroBuf[msgSize]="\0";
+		printk(KERN_INFO "msg size is %u",msgSize+1);
+		copy_to_user(buffer,gyroBuf,msgSize+1);
+		return msgSize+1;
+			
    }
-   return -EFAULT;
+   printk(KERN_INFO "something fucked up");
+   return 0;
 }
  
 /** @brief This function is called whenever the device is being written to from user space i.e.
@@ -192,10 +244,11 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
 		chanInBuf[0]=THROT_MN;
 		break;
 	case ASCII_M:
-		//chanMessage[0]=MODE_MN;
+		chanMessage[0]=MODE_MN;
 		break;
 	case ASCII_F:
-		break;
+		pass_to_sensor(filep, buffer, len, offset);
+		return len;
 	default:
 		break;
    }
@@ -204,7 +257,6 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
    copy_from_user(chanMessage,buffer,len);
    strcpy((chanInBuf+1),chanMessage);
    bufPush(mainBuf,chanInBuf);
-   printk(KERN_INFO "FlightControl: Woopsies Received %zu characters from the user\n", len);
    return len;
 }
  
@@ -225,7 +277,11 @@ int register_devices(int majorNumber){
    rollDevice = device_create(flightClass, NULL, MKDEV(majorNumber, ROLL_MN), NULL, ROLL_CHAN);
    yawDevice = device_create(flightClass, NULL, MKDEV(majorNumber,YAW_MN), NULL, YAW_CHAN);
    modeDevice = device_create(flightClass, NULL, MKDEV(majorNumber, MODE_MN), NULL, MODE_CHAN);
-   return (IS_ERR(fly0Device) || IS_ERR(throtDevice) || IS_ERR(pitchDevice) ||IS_ERR(rollDevice) || IS_ERR(yawDevice) || IS_ERR(modeDevice));
+   magDevice = device_create(flightClass, NULL, MKDEV(majorNumber, MAG_MN), NULL, MAG_OUT);
+   gyroDevice = device_create(flightClass, NULL, MKDEV(majorNumber, GYRO_MN), NULL, GYRO_OUT);
+   accelDevice = device_create(flightClass, NULL, MKDEV(majorNumber, ACCEL_MN), NULL, ACCEL_OUT);
+   altDevice = device_create(flightClass, NULL, MKDEV(majorNumber, ALT_MN), NULL, ALT_OUT);
+   return (IS_ERR(fly0Device) || IS_ERR(throtDevice) || IS_ERR(pitchDevice) ||IS_ERR(rollDevice) || IS_ERR(yawDevice) || IS_ERR(modeDevice) || IS_ERR(magDevice) || IS_ERR(gyroDevice) || IS_ERR(accelDevice) || IS_ERR(altDevice));
 }
 
 void destroy_devices(int majorNumber){
@@ -235,6 +291,10 @@ void destroy_devices(int majorNumber){
 	device_destroy(flightClass, MKDEV(majorNumber, ROLL_MN));
 	device_destroy(flightClass, MKDEV(majorNumber, YAW_MN));
 	device_destroy(flightClass, MKDEV(majorNumber, MODE_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, MAG_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, GYRO_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, ACCEL_MN));
+	device_destroy(flightClass, MKDEV(majorNumber, ALT_MN));
 }
 
 void deregister_devices(int majorNumber){
@@ -244,8 +304,35 @@ void deregister_devices(int majorNumber){
    unregister_chrdev(majorNumber, ROLL_CHAN);
    unregister_chrdev(majorNumber, YAW_CHAN);
    unregister_chrdev(majorNumber, MODE_CHAN);
+   unregister_chrdev(majorNumber, MAG_OUT);
+   unregister_chrdev(majorNumber, GYRO_OUT);
+   unregister_chrdev(majorNumber, ACCEL_OUT);
+   unregister_chrdev(majorNumber, ALT_OUT);
+   
 }
 
+void pass_to_sensor(struct file *filep, const char *buffer, size_t len, loff_t *offset){
+	char firstLetter;
+	if (len > SENSOR_BUF_SIZE)
+		len=SENSOR_BUF_SIZE;
+	copy_from_user(sensorInBuf,buffer,len);
+	firstLetter=sensorInBuf[0];
+	switch(firstLetter){
+		case MAG_MN:
+			strcpy(magBuf,sensorInBuf+1);
+			break;
+		case ACCEL_MN:
+			strcpy(accelBuf,sensorInBuf+1);
+                        break;
+		case ALT_MN:
+			strcpy(altBuf,sensorInBuf+1);
+                        break;
+		case GYRO_MN:
+			strcpy(gyroBuf,sensorInBuf+1);
+			break;
+	}
+
+}
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
  *  identify the initialization function at insertion time and the cleanup function (as
  *  listed above)
