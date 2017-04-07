@@ -187,12 +187,12 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 	case ASCII_F:
    		msgSize=(unsigned int)bufPull(mainBuf,chanOutBuf,CHAN_BUF_SIZE);
 		copy_to_user(buffer,chanOutBuf,msgSize);
-		return msgSize;	
+		return 0;	
 	case ASCII_M:
 		if(secondLetter == ASCII_A){
 			msgSize=strlen(magBuf);
 			copy_to_user(buffer,magBuf,msgSize+1);
-			return 0;
+			return msgSize;
 		}
 		return -EFAULT;
 	case ASCII_A:
@@ -204,16 +204,13 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 			msgSize=strlen(altBuf);
 			copy_to_user(buffer,altBuf,msgSize+1);
 		}
-		return 0;
+		return msgSize;
 	case ASCII_G:
 		msgSize=strlen(gyroBuf);
-		gyroBuf[msgSize]="\0";
-		printk(KERN_INFO "msg size is %u",msgSize+1);
 		copy_to_user(buffer,gyroBuf,msgSize+1);
-		return msgSize+1;
+		return msgSize;
 			
    }
-   printk(KERN_INFO "something fucked up");
    return 0;
 }
  
@@ -319,15 +316,19 @@ void pass_to_sensor(struct file *filep, const char *buffer, size_t len, loff_t *
 	switch(firstLetter){
 		case MAG_MN:
 			strcpy(magBuf,sensorInBuf+1);
+			magBuf[len-1]="\0";
 			break;
 		case ACCEL_MN:
 			strcpy(accelBuf,sensorInBuf+1);
+			accelBuf[len-1]="\0";
                         break;
 		case ALT_MN:
 			strcpy(altBuf,sensorInBuf+1);
+			altBuf[len-1]="\0";
                         break;
 		case GYRO_MN:
 			strcpy(gyroBuf,sensorInBuf+1);
+			gyroBuf[len-1]="\0";
 			break;
 	}
 

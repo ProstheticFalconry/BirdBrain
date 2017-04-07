@@ -4,8 +4,9 @@ THROT=/dev/fly/throttle
 YAW=/dev/fly/yaw
 MODE=/dev/fly/mode
 
-echo 1200 > $MODE
 echo 1500 > $ROLL
 echo 1400 > $THROT
-
+echo 3 > $MODE
+echo 1000 > $PITCH
+echo 1600 > $ROLL
 
