@@ -1,0 +1,29 @@
+#!/bin/sh
+
+AUTO=39
+STABILIZE=40
+ALT_HOLD=41
+BRAKE=42
+
+ROLL=/dev/fly/roll
+PITCH=/dev/fly/pitch
+THROT=/dev/fly/throttle
+YAW=/dev/fly/yaw
+MODE=/dev/fly/mode
+
+echo "30"
+sleep 10
+echo "20"
+sleep 10
+echo "10"
+sleep 10
+echo "ENGAGE"
+
+echo $STABILIZE > $MODE
+echo 1000 > $THROT
+
+sleep 5
+
+echo 860 > $THROT
+
+echo "TURNING THROTTLE OFF"
