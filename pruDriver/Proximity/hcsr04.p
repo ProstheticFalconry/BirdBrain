@@ -65,7 +65,7 @@
 #define time_final r11
 
 // Flags. 1 means does not have a value yet
-#define ECHOS_PENDING r12
+#define WAITING_FOR_LOW r12
 // Flags. 1 means waiting for pin to go HIGH, 0 means waiting to go LOW
 #define WAITING_FOR_HIGH r13
 
@@ -117,11 +117,14 @@ TRIGGER:
         SET r0, CTR_EN
         SBBO r0, r1, 0, 4
 
-        // Fire the sonar
-	// Set trigger pin to high
+        // Fire the sonar by setting trigger pin to high
 	MOV r2, 1<<BIT_TRIGGER
 	MOV r3, GPIO1 | GPIO_SETDATAOUT
 	SBBO r2, r3, 0, 4
+	
+	// Initialize flags
+	MOV WAITING_FOR_HIGH 0x1F
+	MOV WAITING_FOR_LOW 0
 	
 	// Delay 10 microseconds (200 MHz / 2 instructions = 10 ns per loop, 10 us = 1000 loops) 
 	MOV r0, 1000
@@ -134,40 +137,184 @@ TRIGGER_DELAY:
 	MOV r3, GPIO1 | GPIO_CLEARDATAOUT
 	SBBO r2, r3, 0, 4
 
-// Wait for echo to go high        
-
+	QBA MAIN_LOOP
+	
+	
 // Functions that check if Echo pins have gone high
-WAIT_FOR_HIGH:
+WAIT_FOR_HIGHalt:
+        MOV r1, GPIO0 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBC SONAR1, r2, BIT_ECHO0a
+        
+        // ECHO has gone HIGH, so toggle flag and record timer value
+        MOV r1, PRU0_CTRL | CYCLE
+        LBBO time_init0a, r1, 0, 4
+	CLR WAITING_FOR_HIGH 0
+	SET WAITING_FOR_LOW 0
+	QBA SONAR1
+	
+WAIT_FOR_HIGH1:
+        MOV r1, GPIO0 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBC SONAR2, r2, BIT_ECHO0b
+        
+        // ECHO has gone HIGH, so toggle flag and record timer value
+        MOV r1, PRU0_CTRL | CYCLE
+        LBBO time_init0b, r1, 0, 4
+	CLR WAITING_FOR_HIGH 1
+	SET WAITING_FOR_LOW 1
+	QBA SONAR2
+	
+WAIT_FOR_HIGH2:
+        MOV r1, GPIO0 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBC SONAR3, r2, BIT_ECHO0c
+        
+        // ECHO has gone HIGH, so toggle flag and record timer value
+        MOV r1, PRU0_CTRL | CYCLE
+        LBBO time_init0c, r1, 0, 4
+	CLR WAITING_FOR_HIGH 2
+	SET WAITING_FOR_LOW 2
+	QBA SONAR3
+	
+WAIT_FOR_HIGH3:
         MOV r1, GPIO1 | GPIO_DATAIN
         LBBO r2, r1, 0, 4
-        QBBC WAIT_FOR_HIGH, r2, BIT_ECHO1b
+        QBBC SONAR4, r2, BIT_ECHO1a
+        
+        // ECHO has gone HIGH, so toggle flag and record timer value
+        MOV r1, PRU0_CTRL | CYCLE
+        LBBO time_init1a, r1, 0, 4
+	CLR WAITING_FOR_HIGH 3
+	SET WAITING_FOR_LOW 3
+	QBA SONAR4
+	
+WAIT_FOR_HIGH4:
+        MOV r1, GPIO1 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBC MAIN_LOOP, r2, BIT_ECHO1b
         
         // ECHO has gone HIGH, so toggle flag and record timer value
         MOV r1, PRU0_CTRL | CYCLE
         LBBO time_init1b, r1, 0, 4
+	CLR WAITING_FOR_HIGH 4
+	SET WAITING_FOR_LOW 4
+	QBA MAIN_LOOP
 
-WAIT_FOR_LOW:
-        // Delay by 100 * 2 instructions * 5 ns = 1 microsecond
-        MOV r0, 100
-DELAY:
-        SUB r0, r0, 1
-        QBNE DELAY, r0, 0
-        // End of Delay
+WAIT_FOR_LOWalt:
+        // Check if Echo has gone low
+        MOV r1, GPIO0 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBS SONAR1, r2, BIT_ECHO0a
+        
+        // ECHO has gone low, grab time, write to memory and toggle flag
+        MOV r1, PRU0_CTRL | CYCLE
+	CLR WAITING_FOR_LOW, 0
+        
+        // Write times to memory
+        LBBO time_final, r1, 0, 4
+        SBCO time_init0a, c24, 0, 4
+        SBCO time_final, c24, 4, 4
+	QBA SONAR1
 
+WAIT_FOR_LOW1:
+        // Check if Echo has gone low
+        MOV r1, GPIO0 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBS SONAR2, r2, BIT_ECHO0b
+        
+        // ECHO has gone low, grab time, write to memory and toggle flag
+        MOV r1, PRU0_CTRL | CYCLE
+        CLR WAITING_FOR_LOW, 1
+        
+        // Write times to memory
+        LBBO time_final, r1, 0, 4
+        SBCO time_init0b, c24, 0, 4
+        SBCO time_final, c24, 4, 4
+	QBA SONAR2
+
+WAIT_FOR_LOW2:
+        // Check if Echo has gone low
+        MOV r1, GPIO0 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBS SONAR3, r2, BIT_ECHO0c
+        
+        // ECHO has gone low, grab time, write to memory and toggle flag
+        MOV r1, PRU0_CTRL | CYCLE
+        CLR WAITING_FOR_LOW, 2
+        
+        // Write times to memory
+        LBBO time_final, r1, 0, 4
+        SBCO time_init0c, c24, 0, 4
+        SBCO time_final, c24, 4, 4
+	QBA SONAR3
+
+WAIT_FOR_LOW3:
         // Check if Echo has gone low
         MOV r1, GPIO1 | GPIO_DATAIN
         LBBO r2, r1, 0, 4
-        QBBS WAIT_FOR_LOW, r2, BIT_ECHO1b
+        QBBS SONAR4, r2, BIT_ECHO1a
         
-        // ECHO has gone low, grab time
+        // ECHO has gone low, grab time, write to memory and toggle flag
         MOV r1, PRU0_CTRL | CYCLE
+        CLR WAITING_FOR_LOW, 3
+        
+        // Write times to memory
+        LBBO time_final, r1, 0, 4
+        SBCO time_init1a, c24, 0, 4
+        SBCO time_final, c24, 4, 4
+	QBA SONAR4
+
+WAIT_FOR_LOW4:
+        // Check if Echo has gone low
+        MOV r1, GPIO1 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBS MAIN_LOOP, r2, BIT_ECHO1b
+        
+        // ECHO has gone low, grab time, write to memory and toggle flag
+        MOV r1, PRU0_CTRL | CYCLE
+        CLR WAITING_FOR_LOW, 4
         
         // Write times to memory
         LBBO time_final, r1, 0, 4
         SBCO time_init1b, c24, 0, 4
         SBCO time_final, c24, 4, 4
+	QBA MAIN_LOOP
 
-        // Optional Interrupt parent C program
+MAIN_LOOP:
+	// Delay by 100 * 2 instructions * 5 ns = 1 microsecond
+	// Discovered through testing that this is necessary
+        MOV r0, 100
+DELAY:
+        SUB r0, r0, 1
+        QBNE DELAY, r0, 0
+        // End of Delay
+	
+	// Cycle through each sonar device and check state of pin
+	QBBS WAIT_FOR_HIGHalt, WAITING_FOR_HIGH, 0
+	QBBS WAIT_FOR_LOWalt, WAITING_FOR_LOW, 0
+
+SONAR1:
+	QBBS WAIT_FOR_HIGH1, WAITING_FOR_HIGH, 1
+	QBBS WAIT_FOR_LOW1, WAITING_FOR_LOW, 1
+
+SONAR2:
+	QBBS WAIT_FOR_HIGH2, WAITING_FOR_HIGH, 2
+	QBBS WAIT_FOR_LOW2, WAITING_FOR_LOW, 2
+
+SONAR:3
+	QBBS WAIT_FOR_HIGH3, WAITING_FOR_HIGH, 3
+	QBBS WAIT_FOR_LOW3, WAITING_FOR_LOW, 3
+
+SONAR:4
+	QBBS WAIT_FOR_HIGH4, WAITING_FOR_HIGH, 4
+	QBBS WAIT_FOR_LOW4, WAITING_FOR_LOW, 4
+	
+	// Loop until no sonar are waiting for anything
+	QBNE MAIN_LOOP, WAITING_FOR_LOW, 0
+	QBNE MAIN_LOOP, WAITING_FOR_HIGH, 0
+
+        // Optionally Interrupt parent C program
         // MOV r31.b0, PRU0_ARM_INTERRUPT+16        
               
         // Delay to allow sonar to stop resonating 
