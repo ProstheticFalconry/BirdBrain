@@ -1,1 +1,0 @@
-cmd_/home/ubuntu/BirdBrain/driverModule/flightControl.ko := ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/ubuntu/BirdBrain/driverModule/flightControl.ko /home/ubuntu/BirdBrain/driverModule/flightControl.o /home/ubuntu/BirdBrain/driverModule/flightControl.mod.o

@@ -1,1 +1,0 @@
-cmd_/home/ubuntu/birdBrain/driverModule/ebbchar.ko := ld -EL -r  -T ./scripts/module-common.lds --build-id  -o /home/ubuntu/birdBrain/driverModule/ebbchar.ko /home/ubuntu/birdBrain/driverModule/ebbchar.o /home/ubuntu/birdBrain/driverModule/ebbchar.mod.o
