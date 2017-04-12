@@ -30,7 +30,7 @@
 // gpio1[12] P8_12 gpio44 0x030
 #define BIT_TRIGGER44 0x0C
 
-// ECHOS
+// ECHO PINS
 // gpio1[15] P8_15 gpio47 0x
 #define BIT_ECHO47 0x0F
 //gpio1[14] P8_16 gpio46 0x
@@ -45,17 +45,29 @@
 // PRU interrupt for PRU0
 #define PRU0_ARM_INTERRUPT 19
 
-// ChooseTriggerAndEchoPins
+// TRIGGER and ECHO PINS Being Used 
 #define BIT_TRIGGER BIT_TRIGGER44
-#define BIT_ECHO BIT_ECHO2
-#define BIT_ECHO1 BIT_ECHO14
+#define BIT_ECHO1a BIT_ECHO47
+#define BIT_ECHO1b BIT_ECHO46
+#define BIT_ECHO0a BIT_ECHO2
+#define BIT_ECHO0b BIT_ECHO14
+#define BIT_ECHO0c BIT_ECHO15
 
 #define MAX_TIME 2230
-#define WAIT_TIME 2000000
-#define delay r0
-#define roundtrip r4
-#define cycles_init r5
-#define cycles_fin r6
+#define WAIT_TIME 6000000
+
+// Register reserved for holding initial clock values
+#define time_init0a r6
+#define time_init0b r7
+#define time_init0c r8
+#define time_init1a r9
+#define time_init1b r10
+#define time_final r11
+
+// Flags. 1 means does not have a value yet
+#define ECHOS_PENDING r12
+// Flags. 1 means waiting for pin to go HIGH, 0 means waiting to go LOW
+#define WAITING_FOR_HIGH r13
 
 START:
 
@@ -79,25 +91,32 @@ START:
         SET r0, CTR_EN
         SBBO r0, r1, 0, 4
 
-	// Enable trigger as output and echo as input (clear BIT_TRIGGER and set BIT_ECHO of output enable)
+	// Enable trigger as output
 	MOV r1, GPIO1 | GPIO_OE
 	LBBO r0, r1, 0, 4
 	CLR r0, BIT_TRIGGER
         SBBO r0, r1, 0, 4
 
-        MOV r1, GPIO0 | GPIO_OE
+        // Enable Echo as input (GPIO1)
+        MOV r1, GPIO1 | GPIO_OE
         LBBO r0, r1, 0, 4
-	SET r0, BIT_ECHO
-        SET r0, BIT_ECHO1
-	SBBO r0, r1, 0, 4
-
-        MOV r7, 0
+        SET r0, BIT_ECHO1b
+        SBBO r0, r1, 0, 4
 
 TRIGGER:
-	// Count loops
-        ADD r7, r7, 1
-        SBCO r7, c24, 16, 4
+        // Reset clock cycle counter
+        MOV r1, PRU0_CTRL
+        LBBO r0, r1, 0, 4
+        CLR r0, CTR_EN
+        SBBO r0, r1, 0, 4
         
+        MOV r3, PRU0_CTRL | CYCLE
+        MOV r2, 1
+        SBBO r2, r3, 0, 4
+
+        SET r0, CTR_EN
+        SBBO r0, r1, 0, 4
+
         // Fire the sonar
 	// Set trigger pin to high
 	MOV r2, 1<<BIT_TRIGGER
@@ -105,119 +124,59 @@ TRIGGER:
 	SBBO r2, r3, 0, 4
 	
 	// Delay 10 microseconds (200 MHz / 2 instructions = 10 ns per loop, 10 us = 1000 loops) 
-	MOV delay, 1000
+	MOV r0, 1000
 TRIGGER_DELAY:
-	SUB delay, delay, 1
-	QBNE TRIGGER_DELAY, delay, 0
+	SUB r0, r0, 1
+	QBNE TRIGGER_DELAY, r0, 0
 	
 	// Set trigger pin to low
 	MOV r2, 1<<BIT_TRIGGER
 	MOV r3, GPIO1 | GPIO_CLEARDATAOUT
 	SBBO r2, r3, 0, 4
 
-	// Wait for BIT_ECHO to go high, i.e. wait for the echo cycle to start
-	MOV r3, GPIO0 | GPIO_DATAIN
-        // Initialize timeout
-        // MOV r5, MAX_TIME
-WAIT_ECHO:
-	// Check for TIMEOUT
-        // SUB r5, r5, 1
-        // QBEQ TIMEOUT, r5, 0
-        // Read the GPIO until BIT_ECHO goes high
-	LBBO r2, r3, 0, 4
-	QBBC WAIT_ECHO, r2, BIT_ECHO
+// Wait for echo to go high        
+
+// Functions that check if Echo pins have gone high
+WAIT_FOR_HIGH:
+        MOV r1, GPIO1 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBC WAIT_FOR_HIGH, r2, BIT_ECHO1b
         
-	// load initial number of clock cycles into cycles_init
-	MOV r4, PRU0_CTRL | CYCLE
-        LBBO cycles_init, r4, 0, 4
+        // ECHO has gone HIGH, so toggle flag and record timer value
+        MOV r1, PRU0_CTRL | CYCLE
+        LBBO time_init1b, r1, 0, 4
 
-SAMPLE_ECHO:
-        // Read GPIO until BIT_ECHO goes low
-	LBBO r2, r3, 0, 4
-	QBBS SAMPLE_ECHO, r2, BIT_ECHO
+WAIT_FOR_LOW:
+        // Delay by 100 * 2 instructions * 5 ns = 1 microsecond
+        MOV r0, 100
+DELAY:
+        SUB r0, r0, 1
+        QBNE DELAY, r0, 0
+        // End of Delay
 
-        // BIT_ECHO has gone low, get final num_cycles
-        MOV r4, PRU0_CTRL | CYCLE
-        LBBO cycles_fin, r4, 0, 4
+        // Check if Echo has gone low
+        MOV r1, GPIO1 | GPIO_DATAIN
+        LBBO r2, r1, 0, 4
+        QBBS WAIT_FOR_LOW, r2, BIT_ECHO1b
+        
+        // ECHO has gone low, grab time
+        MOV r1, PRU0_CTRL | CYCLE
+        
+        // Write times to memory
+        LBBO time_final, r1, 0, 4
+        SBCO time_init1b, c24, 0, 4
+        SBCO time_final, c24, 4, 4
 
-        QBA NO_TIMEOUT
-TIMEOUT:
-        MOV r3, r2
-NO_TIMEOUT:
-	// Echo is complete, store the two different number of cycles
-	SBCO cycles_init, c24, 0, 4
-        SBCO cycles_fin, c24, 4, 4
-        // Interrupt to cause printf to trigger
+        // Optional Interrupt parent C program
         // MOV r31.b0, PRU0_ARM_INTERRUPT+16        
-      
-        // Delay to allow sonar to stop resonating and sound burst to decay in environment
-        MOV delay, WAIT_TIME
-RESET_DELAY1:
-        SUB delay, delay, 1
-        QBNE RESET_DELAY1, delay, 0
-
-
-        // Fire the sonar
-        // Set trigger pin to high
-        MOV r2, 1<<BIT_TRIGGER
-        MOV r3, GPIO1 | GPIO_SETDATAOUT
-        SBBO r2, r3, 0, 4
-        
-        // Delay 10 microseconds (200 MHz / 2 instructions = 10 ns per loop, 10 us = 1000 loops)
-        MOV delay, 1000
-TRIGGER_DELAY1:
-        SUB delay, delay, 1
-        QBNE TRIGGER_DELAY1, delay, 0
-        
-        // Set trigger pin to low
-        MOV r2, 1<<BIT_TRIGGER
-        MOV r3, GPIO1 | GPIO_CLEARDATAOUT
-        SBBO r2, r3, 0, 4
-        
-        // Wait for BIT_ECHO1 to go high, i.e. wait for the echo cycle to start
-        MOV r3, GPIO0 | GPIO_DATAIN
-        // MOV r5, MAX_TIME
-WAIT_ECHO1:
-        // Check for timeout
-        // SUB r5, r5, 1
-        // QBEQ TIMEOUT1, r5, 0
-
-        // Read the GPIO until BIT_ECHO1 goes high
-        LBBO r2, r3, 0, 4
-        QBBC WAIT_ECHO1, r2, BIT_ECHO1
-
-        // load initial number of clock cycles into cycles_init
-        MOV r4, PRU0_CTRL | CYCLE
-        LBBO cycles_init, r4, 0, 4
-
-SAMPLE_ECHO1:
-                
-        // Read GPIO until BIT_ECHO1 goes low
-        LBBO r2, r3, 0, 4
-        QBBS SAMPLE_ECHO1, r2, BIT_ECHO1
-
-        // BIT_ECHO has gone low, get final num_cycles
-        MOV r4, PRU0_CTRL | CYCLE
-        LBBO cycles_fin, r4, 0, 4
-
-        QBA NO_TIMEOUT1
-TIMEOUT1:
-        MOV r3, r2
-NO_TIMEOUT1:
-
-        // Echo is complete store the init and final number of cycles        
-        SBCO cycles_init, c24, 8, 4
-        SBCO cycles_fin, c24, 12, 4
-	//MOV r31.b0, PRU0_ARM_INTERRUPT+16
-        
-        // Delay to allow sonar to stop resonating and sound burst to decay in environment
-	MOV delay, WAIT_TIME
+              
+        // Delay to allow sonar to stop resonating 
+	MOV r0, WAIT_TIME
 RESET_DELAY:
-	SUB delay, delay, 1
-	QBNE RESET_DELAY, delay, 0
+	SUB r0, r0, 1
+	QBNE RESET_DELAY, r0, 0
 
 	// Jump back to triggering the sonar
 	JMP TRIGGER
 
 	HALT
-
